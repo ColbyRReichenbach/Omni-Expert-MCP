@@ -1,0 +1,66 @@
+﻿Omni-Expert MCP: Enterprise Technical Blueprint
+I. Mission & Strategic Objective
+To bridge the Expertise Gap between retail staff and complex consumer needs by deploying a Model Context Protocol (MCP) server that synthesizes millions of data points into real-time, aisle-side intelligence.
+Key KPI: Reduce "Assistance Latency"—the time it takes a team member to provide a technical or specialized product recommendation.
+________________
+
+
+II. Technical Architecture & System Design
+The system is built as a decoupled retrieval and orchestration engine.
+1. The Data Distiller (Offline/Batch Layer)
+Standard RAG fails at scale because retail data (reviews/specs) is repetitive. We use a Semantic Centroid Distillation process.
+* Model Selection: GPT-4o-mini or Claude 3.5 Haiku for cost-efficient summarization.
+* Process: 1. Group reviews by SKU.
+2. Extract "Feature-Sentiment" pairs (e.g., "Scent: Overpowering," "Skin-Type: Dry-only").
+3. Generate a Canonical SKU Profile—a single, dense JSON object of "Expert Truths."
+* Vector DB: Pinecone (Serverless) or Milvus.
+   * Index Schema: $Dimension: 1536$ (OpenAI text-embedding-3-small).
+   * Metadata: store_id, category_id, aisle_location, stock_status.
+2. The MCP Orchestrator (Middleware Layer)
+Built on FastMCP (Python), this acts as the interface between the LLM and Target’s internal systems.
+   * Tool: get_product_expert: Queries the Vector DB for the "Semantic Centroid" of a SKU.
+   * Tool: cross_reference_inventory: Executes a SQL SELECT against Target’s inventory DB to verify that the recommended product is actually on the shelf.
+   * Tool: find_alternatives: If the expert-choice is OOS (Out of Stock), it performs a vector similarity search for the nearest neighbor in the same category.
+________________
+
+
+III. AI & Model Selection Logic
+Component
+	Model
+	Why?
+	Edge Agent (Zebra)
+	Claude 3.5 Sonnet
+	Superior tool-calling accuracy and lower "hallucination" rate for complex retail logic.
+	Batch Processor
+	GPT-4o-mini
+	High throughput ($10M+$ tokens/day) for processing millions of guest reviews at minimal cost.
+	Embeddings
+	text-embedding-3-small
+	Highly compressed vectors (1536 dim) ensure sub-100ms retrieval speeds.
+	________________
+
+
+IV. Security, IP, & Governance
+To sell this to an enterprise, the "Black Box" must be wrapped in a Security Hardened Envelope.
+   * Authentication: Integration with Okta/Azure AD via OAuth2. Only authenticated Zebra device IDs can hit the MCP endpoint.
+   * Data Masking: All PII (Guest names in reviews) is stripped during the Distillation phase. The LLM never sees a guest's name.
+   * Prompt Injection Guardrails: Use LlamaGuard or a similar middleman to scan incoming Zebra prompts for malicious "jailbreak" attempts (e.g., trying to find internal discount codes).
+________________
+
+
+V. Implementation Roadmap (The "Nitty Gritty")
+Phase 1: The Embeddings Pipeline (Hours 1–6)
+   * Action: Script a Python loader that pulls CSV/SQL product data.
+   * Code Goal: Convert raw text into JSON summaries → Embed → Upsert to Pinecone.
+Phase 2: The MCP Server (Hours 6–12)
+   * Action: Deploy a FastAPI server running FastMCP.
+   * Code Goal: Define the Tools that the LLM will use to "see" the store data.
+Phase 3: The Front-End "Zebra" App (Hours 12–18)
+   * Action: Build a Next.js PWA (Progressive Web App) that mimics the UI of the "Store Companion" app.
+   * Code Goal: Implement a "Push-to-Talk" feature that sends audio to Whisper (STT), then to the MCP agent.
+________________
+
+
+VI. Why This is Market-Ready
+   1. Low Latency: By pre-distilling reviews into "Centroids," we avoid passing 500 reviews into the LLM context, saving $3.00+ per 1k queries and 5+ seconds of wait time.
+   2. Protocol-First: By using MCP, Target can swap the underlying LLM (e.g., moving from Claude to an internal Vertex AI model) without rewriting the entire frontend.
